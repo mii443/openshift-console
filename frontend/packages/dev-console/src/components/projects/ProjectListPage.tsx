@@ -1,6 +1,6 @@
 import type { FC, ComponentType, ReactNode } from 'react';
 import { ListPage } from '@console/internal/components/factory';
-import { ProjectsTable } from '@console/internal/components/namespace';
+import { NamespacesList, ProjectsTable } from '@console/internal/components/namespace';
 import { PageHeading } from '@console/shared/src/components/heading/PageHeading';
 import { FLAGS } from '@console/shared/src/constants/common';
 import { useFlag } from '@console/shared/src/hooks/useFlag';
@@ -20,6 +20,7 @@ const ProjectListPage: FC<ProjectListPageProps> = ({
   ...listPageProps
 }) => {
   const isOpenShift = useFlag(FLAGS.OPENSHIFT);
+  const defaultListComponent = isOpenShift ? ProjectsTable : NamespacesList;
 
   return (
     <div className="odc-project-list-page">
@@ -28,7 +29,7 @@ const ProjectListPage: FC<ProjectListPageProps> = ({
         {...listPageProps}
         showTitle={false}
         kind={isOpenShift ? 'Project' : 'Namespace'}
-        ListComponent={listComponent || ProjectsTable}
+        ListComponent={listComponent || defaultListComponent}
         canCreate={false}
         filterLabel="by name or display name"
         textFilter="project-name"
