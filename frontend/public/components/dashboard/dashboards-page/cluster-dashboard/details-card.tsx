@@ -48,6 +48,7 @@ import { LoadingInline } from '../../../utils/status-box';
 import { Link } from 'react-router';
 import { useK8sWatchResource } from '../../../utils/k8s-watch-hook';
 import { ClusterDashboardContext } from './context';
+import { k8sVersion as getK8sVersion } from '../../../../module/status';
 
 const ClusterVersion: FC<ClusterVersionProps> = ({ cv }) => {
   const { t } = useTranslation();
@@ -123,8 +124,7 @@ export const DetailsCard: React.FC = () => {
     }
     const fetchK8sVersion = async () => {
       try {
-        const response = await fetch('version');
-        const version = await response.json();
+        const version = await getK8sVersion();
         setK8sVersion(version);
       } catch (error) {
         setK8sVersionError(error);
@@ -286,19 +286,31 @@ export const DetailsCard: React.FC = () => {
                 })}
               </>
             ) : (
-              <OverviewDetailItem
-                key="kubernetes"
-                title={t('public~Kubernetes version')}
-                error={
-                  !!k8sVersionError || (k8sVersion && !k8sGitVersion)
-                    ? t('public~Not available')
-                    : undefined
-                }
-                isLoading={!k8sVersion}
-                valueClassName="co-select-to-copy"
-              >
-                {k8sGitVersion}
-              </OverviewDetailItem>
+              <>
+                <OverviewDetailItem
+                  title={t('public~Cluster API address')}
+                  error={
+                    !window.SERVER_FLAGS.kubeAPIServerURL ? t('public~Not available') : undefined
+                  }
+                  isLoading={false}
+                  valueClassName="co-select-to-copy"
+                >
+                  {window.SERVER_FLAGS.kubeAPIServerURL}
+                </OverviewDetailItem>
+                <OverviewDetailItem
+                  key="kubernetes"
+                  title={t('public~Kubernetes version')}
+                  error={
+                    !!k8sVersionError || (k8sVersion && !k8sGitVersion)
+                      ? t('public~Not available')
+                      : undefined
+                  }
+                  isLoading={!k8sVersion}
+                  valueClassName="co-select-to-copy"
+                >
+                  {k8sGitVersion}
+                </OverviewDetailItem>
+              </>
             )}
           </DescriptionList>
         )}

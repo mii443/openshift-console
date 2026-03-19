@@ -3,6 +3,7 @@ import Dashboard from '@console/shared/src/components/dashboard/Dashboard';
 import DashboardGrid from '@console/shared/src/components/dashboard/DashboardGrid';
 import { FLAGS } from '@console/shared/src/constants/common';
 import { useFlag } from '@console/shared/src/hooks/useFlag';
+import { flagPending } from '../../../../reducers/features';
 import { StatusCard } from './status-card';
 import { DetailsCard } from './details-card';
 import { InventoryCard } from './inventory-card';
@@ -19,6 +20,9 @@ import { CLUSTER_DASHBOARD_USER_SETTINGS_KEY } from './getting-started/constants
 const mainCards = [{ Card: StatusCard }, { Card: UtilizationCard }];
 const leftCards = [{ Card: DetailsCard }, { Card: InventoryCard }];
 const rightCards = [{ Card: ActivityCard }];
+const kubernetesMainCards = [];
+const kubernetesLeftCards = [{ Card: DetailsCard }, { Card: InventoryCard }];
+const kubernetesRightCards = [];
 
 export const ClusterDashboard: FC<{}> = () => {
   const [infrastructure, infrastructureLoaded, infrastructureError] = useK8sGet<K8sResourceKind>(
@@ -29,6 +33,7 @@ export const ClusterDashboard: FC<{}> = () => {
   const consoleCapabilityGettingStartedBannerIsEnabled = useFlag(
     FLAGS.CONSOLE_CAPABILITY_GETTINGSTARTEDBANNER_IS_ENABLED,
   );
+  const openshiftFlag = useFlag(FLAGS.OPENSHIFT);
 
   const context = {
     infrastructure,
@@ -36,13 +41,22 @@ export const ClusterDashboard: FC<{}> = () => {
     infrastructureError,
   };
 
+  const isOpenShift = flagPending(openshiftFlag) || openshiftFlag;
+  const selectedMainCards = isOpenShift ? mainCards : kubernetesMainCards;
+  const selectedLeftCards = isOpenShift ? leftCards : kubernetesLeftCards;
+  const selectedRightCards = isOpenShift ? rightCards : kubernetesRightCards;
+
   return (
     <ClusterDashboardContext.Provider value={context}>
       <Dashboard>
-        {consoleCapabilityGettingStartedBannerIsEnabled && (
+        {isOpenShift && consoleCapabilityGettingStartedBannerIsEnabled && (
           <GettingStartedSection userSettingKey={CLUSTER_DASHBOARD_USER_SETTINGS_KEY} />
         )}
-        <DashboardGrid mainCards={mainCards} leftCards={leftCards} rightCards={rightCards} />
+        <DashboardGrid
+          mainCards={selectedMainCards}
+          leftCards={selectedLeftCards}
+          rightCards={selectedRightCards}
+        />
       </Dashboard>
     </ClusterDashboardContext.Provider>
   );

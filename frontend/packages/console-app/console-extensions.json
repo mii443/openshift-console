@@ -992,6 +992,20 @@
     }
   },
   {
+    "type": "console.navigation/href",
+    "properties": {
+      "perspective": "admin",
+      "section": "home",
+      "id": "dashboards-kubernetes",
+      "name": "%console-app~Overview%",
+      "href": "/dashboards"
+    },
+    "flags": {
+      "required": ["CAN_GET_NS"],
+      "disallowed": ["OPENSHIFT"]
+    }
+  },
+  {
     "type": "console.navigation/resource-cluster",
     "properties": {
       "perspective": "admin",

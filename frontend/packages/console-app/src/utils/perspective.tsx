@@ -8,7 +8,7 @@ export const getLandingPageURL: ResolvedExtension<Perspective>['properties']['la
   flags,
 ) => {
   if (!flags[FLAGS.OPENSHIFT]) {
-    return '/search';
+    return flags[FLAGS.CAN_GET_NS] ? '/dashboards' : '/search';
   }
   return flags[FLAGS.CAN_LIST_NS] && flags[FLAGS.MONITORING]
     ? '/dashboards'
