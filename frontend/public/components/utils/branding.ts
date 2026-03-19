@@ -5,7 +5,7 @@ import {
   THEME_LIGHT,
   darkThemeMq,
 } from '@console/internal/components/ThemeProvider';
-import okdLogoImg from '../../imgs/okd-logo.svg';
+import kubernetesLogoImg from '../../imgs/kubernetes-logo.svg';
 import openshiftLogoImg from '../../imgs/openshift-logo.svg';
 import onlineLogoImg from '../../imgs/openshift-online-logo.svg';
 import dedicatedLogoImg from '../../imgs/openshift-dedicated-logo.svg';
@@ -45,8 +45,8 @@ export const getBrandingDetails = () => {
       productName = 'Red Hat OpenShift Service on AWS';
       break;
     default:
-      staticLogo = okdLogoImg;
-      productName = 'OKD';
+      staticLogo = kubernetesLogoImg;
+      productName = 'Kubernetes Console';
   }
   if (window.SERVER_FLAGS.customProductName) {
     productName = window.SERVER_FLAGS.customProductName;
