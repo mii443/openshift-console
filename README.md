@@ -160,6 +160,20 @@ source ./contrib/environment.sh
 
 We use [`kind`](https://kind.sigs.k8s.io/) as the default Kubernetes test and validation environment for local development.
 
+The quickest end-to-end validation path is:
+
+```shell
+bash contrib/kind-bridge.sh smoke-test
+```
+
+If port `9000` is already in use, run the same flow on a different port:
+
+```shell
+BRIDGE_PORT=9001 bash contrib/kind-bridge.sh smoke-test
+```
+
+For the detailed workflow and available helper commands, see [docs/kubernetes-local-development.md](docs/kubernetes-local-development.md).
+
 If you do not already have a Kubernetes cluster, create one with:
 
 ```shell
@@ -176,6 +190,14 @@ source ./contrib/environment.sh
 ```
 
 The script in `contrib/environment.sh` sets sensible defaults in the environment, and uses `kubectl` to query your cluster for endpoint and authentication information. It prefers the current kubeconfig token when one is present, which makes it work cleanly with `kind`; if there is no token in the kubeconfig it falls back to `kubectl create token`.
+
+If you need to target a specific kubeconfig context without changing your current `kubectl` context, set `BRIDGE_K8S_CONTEXT` before sourcing the script:
+
+```shell
+export BRIDGE_K8S_CONTEXT=kind-console
+source ./contrib/environment.sh
+./bin/bridge --public-dir=./frontend/public/dist
+```
 
 To configure the application to run by hand, (or if `environment.sh` doesn't work for some reason) you can manually provide a Kubernetes bearer token with the following steps.
 
