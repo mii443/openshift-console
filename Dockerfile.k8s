@@ -1,0 +1,49 @@
+##################################################
+#
+# Go backend build for Kubernetes distribution
+FROM golang:1.25-bookworm AS gobuilder
+
+WORKDIR /src
+COPY . .
+
+ENV GOFLAGS=-mod=vendor
+ENV SOURCE_GIT_TAG=kubernetes-fork
+
+RUN ./build-backend.sh
+
+
+##################################################
+#
+# Node frontend build for Kubernetes distribution
+FROM node:22-bookworm AS nodebuilder
+
+WORKDIR /src
+COPY LICENSE ./LICENSE
+COPY pkg/graphql ./pkg/graphql
+COPY frontend ./frontend
+
+ENV CYPRESS_INSTALL_BINARY=0
+
+RUN cd frontend && node .yarn/releases/yarn-4.12.0.cjs install --immutable
+RUN cd frontend && node .yarn/releases/yarn-4.12.0.cjs build
+
+
+##################################################
+#
+# Final runtime image for Kubernetes distribution
+FROM debian:bookworm-slim
+
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends ca-certificates \
+ && rm -rf /var/lib/apt/lists/* \
+ && mkdir -p /opt/bridge/bin /opt/bridge/static /pkg/graphql \
+ && useradd --system --uid 1001 --create-home bridge
+
+COPY --from=gobuilder /src/bin/bridge /opt/bridge/bin/bridge
+COPY --from=gobuilder /src/pkg/graphql/schema.graphql /pkg/graphql/schema.graphql
+COPY --from=nodebuilder /src/frontend/public/dist /opt/bridge/static
+
+WORKDIR /
+USER 1001
+
+CMD ["/opt/bridge/bin/bridge", "--public-dir=/opt/bridge/static"]

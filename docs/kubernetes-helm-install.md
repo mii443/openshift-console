@@ -16,9 +16,13 @@ The default RBAC is intentionally broad for initial Kubernetes compatibility and
 Build and push an image that contains both the backend binary and frontend assets:
 
 ```bash
-docker build -t ghcr.io/your-org/console-k8s:latest .
+docker build -f Dockerfile.k8s -t ghcr.io/your-org/console-k8s:latest .
 docker push ghcr.io/your-org/console-k8s:latest
 ```
+
+Use `Dockerfile.k8s` for Helm and generic Kubernetes installs. The default
+`Dockerfile` uses OpenShift CI base images from `registry.ci.openshift.org`,
+which may require additional registry access.
 
 ## 2. Install With Helm
 

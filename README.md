@@ -104,7 +104,7 @@ running it locally with `bridge`, use the Helm chart in `charts/console`.
 Build and push an image first:
 
 ```shell
-docker build -t ghcr.io/your-org/console-k8s:latest .
+docker build -f Dockerfile.k8s -t ghcr.io/your-org/console-k8s:latest .
 docker push ghcr.io/your-org/console-k8s:latest
 ```
 
