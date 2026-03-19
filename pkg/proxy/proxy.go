@@ -23,6 +23,7 @@ type Config struct {
 	HeaderBlacklist         []string
 	Endpoint                *url.URL
 	TLSClientConfig         *tls.Config
+	BearerToken             string
 	Origin                  string
 	UseProxyFromEnvironment bool
 }
@@ -121,6 +122,10 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	for _, h := range p.config.HeaderBlacklist {
 		r.Header.Del(h)
+	}
+
+	if p.config.BearerToken != "" {
+		r.Header.Set("Authorization", fmt.Sprintf("Bearer %s", p.config.BearerToken))
 	}
 
 	// Handle X-Console-Impersonate-Groups header for multi-group impersonation

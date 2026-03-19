@@ -10,6 +10,7 @@ import (
 
 	"github.com/openshift/console/cmd/bridge/config/flagvalues"
 	"github.com/openshift/console/cmd/bridge/config/session"
+	"github.com/openshift/console/pkg/proxy"
 	"github.com/openshift/console/pkg/server"
 )
 
@@ -35,6 +36,7 @@ func TestApplyToUsesBearerTokenFileForDisabledAuth(t *testing.T) {
 	srv := &server.Server{
 		BaseURL:                        baseURL,
 		InternalProxiedK8SClientConfig: &rest.Config{BearerTokenFile: tokenFile},
+		K8sProxyConfig:                 &proxy.Config{},
 	}
 
 	if err := opts.ApplyTo(srv, k8sEndpoint, "", &session.CompletedOptions{}); err != nil {
@@ -55,6 +57,10 @@ func TestApplyToUsesBearerTokenFileForDisabledAuth(t *testing.T) {
 
 	if got := srv.InternalProxiedK8SClientConfig.BearerTokenFile; got != "" {
 		t.Fatalf("expected bearer token file to be cleared after loading token, got %q", got)
+	}
+
+	if got := srv.K8sProxyConfig.BearerToken; got != "test-token" {
+		t.Fatalf("expected k8s proxy bearer token to be loaded from file, got %q", got)
 	}
 
 	if !srv.AuthDisabled {

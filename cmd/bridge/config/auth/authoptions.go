@@ -237,6 +237,9 @@ func (c *completedOptions) ApplyTo(
 		if c.StaticUserBearerToken != "" {
 			srv.InternalProxiedK8SClientConfig.BearerToken = c.StaticUserBearerToken
 			srv.InternalProxiedK8SClientConfig.BearerTokenFile = ""
+			if srv.K8sProxyConfig != nil {
+				srv.K8sProxyConfig.BearerToken = c.StaticUserBearerToken
+			}
 		}
 	}
 
