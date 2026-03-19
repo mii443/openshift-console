@@ -1,0 +1,16 @@
+This repository contains a modified fork of the OpenShift Console project.
+
+Original upstream work:
+- OpenShift Console
+- Copyright 2018 Red Hat, Inc.
+- Licensed under the Apache License, Version 2.0
+
+Fork-specific notice:
+- This fork includes Kubernetes compatibility changes and local development
+  workflow updates.
+- This fork is not an official Red Hat or OpenShift release.
+
+Trademark notice:
+- OpenShift and Red Hat are trademarks or registered trademarks of Red Hat,
+  Inc. This fork must not be presented in a way that implies endorsement by,
+  affiliation with, or official status from Red Hat.

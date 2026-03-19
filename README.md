@@ -4,6 +4,15 @@ Codename: "Bridge"
 
 [quay.io/openshift/origin-console](https://quay.io/repository/openshift/origin-console?tab=tags)
 
+## Fork Notice
+
+This repository is a modified fork for Kubernetes compatibility work.
+It is not an official Red Hat or OpenShift release.
+
+`OpenShift` and related marks are trademarks of Red Hat, Inc.
+Use this fork in a way that does not imply endorsement by or affiliation with
+Red Hat.
+
 The console is a more friendly `kubectl` in the form of a single page webapp. It also integrates with other services like monitoring, chargeback, and OLM. Some things that go on behind the scenes include:
 
 - Proxying the Kubernetes API under `/api/kubernetes`
