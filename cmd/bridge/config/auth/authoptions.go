@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"strings"
 
 	"github.com/coreos/pkg/flagutil"
 
@@ -220,11 +221,23 @@ func (c *completedOptions) ApplyTo(
 	sessionConfig *session.CompletedOptions,
 ) error {
 	srv.InactivityTimeout = c.InactivityTimeoutSeconds
+	srv.AuthDisabled = c.AuthType == flagvalues.AuthTypeDisabled
 
 	useSecureCookies := srv.BaseURL.Scheme == "https"
 
-	if c.AuthType == flagvalues.AuthTypeDisabled && c.StaticUserBearerToken != "" {
-		srv.InternalProxiedK8SClientConfig.BearerToken = c.StaticUserBearerToken
+	if c.AuthType == flagvalues.AuthTypeDisabled && srv.InternalProxiedK8SClientConfig != nil {
+		if c.StaticUserBearerToken == "" {
+			token, err := readBearerToken(srv.InternalProxiedK8SClientConfig.BearerTokenFile)
+			if err != nil {
+				return err
+			}
+			c.StaticUserBearerToken = token
+		}
+
+		if c.StaticUserBearerToken != "" {
+			srv.InternalProxiedK8SClientConfig.BearerToken = c.StaticUserBearerToken
+			srv.InternalProxiedK8SClientConfig.BearerTokenFile = ""
+		}
 	}
 
 	var err error
@@ -244,6 +257,19 @@ func (c *completedOptions) ApplyTo(
 
 	srv.CSRFVerifier = csrfverifier.NewCSRFVerifier(srv.BaseURL, useSecureCookies)
 	return nil
+}
+
+func readBearerToken(tokenFile string) (string, error) {
+	if tokenFile == "" {
+		return "", nil
+	}
+
+	buf, err := os.ReadFile(tokenFile)
+	if err != nil {
+		return "", fmt.Errorf("failed to read bearer token file %q: %w", tokenFile, err)
+	}
+
+	return strings.TrimSpace(string(buf)), nil
 }
 
 func (c *completedOptions) getAuthenticator(
