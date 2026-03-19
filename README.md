@@ -34,12 +34,58 @@ Backend binaries are output to `./bin`.
 
 ### Configure the application
 
-The following instructions assume you have an existing cluster you can connect
-to. OpenShift 4.x clusters can be installed using the
-[OpenShift Installer](https://mirror.openshift.com/pub/openshift-v4/clients/ocp/latest/). More information about installing OpenShift can be found at
-<https://try.openshift.com/>.
-You can also use [CodeReady Containers](https://github.com/code-ready/crc)
-for local installs, or native Kubernetes clusters.
+The console can run against both plain Kubernetes and OpenShift clusters.
+For local development, plain Kubernetes with [`kind`](https://kind.sigs.k8s.io/)
+is the recommended default path because it is the fastest setup for the current
+Kubernetes compatibility work.
+
+#### Kubernetes (recommended for local development)
+
+The quickest end-to-end validation path is:
+
+```shell
+bash contrib/kind-bridge.sh smoke-test
+```
+
+This will:
+
+1. Create a `kind` cluster named `console` if needed
+2. Grant local test RBAC to `kube-system:default`
+3. Build frontend and backend assets
+4. Start `bridge`
+5. Verify `/` and `/api/kubernetes/api/v1/namespaces`
+
+If port `9000` is already in use, run the same flow on a different port:
+
+```shell
+BRIDGE_PORT=9001 bash contrib/kind-bridge.sh smoke-test
+```
+
+To keep the console running locally instead of exiting after the smoke test:
+
+```shell
+bash contrib/kind-bridge.sh run
+```
+
+If you want to run the Kubernetes flow manually, create a cluster and start
+bridge like this:
+
+```shell
+kind create cluster --name console
+kubectl cluster-info --context kind-console
+export BRIDGE_K8S_CONTEXT=kind-console
+source ./contrib/environment.sh
+./bin/bridge --public-dir=./frontend/public/dist
+```
+
+The script in `contrib/environment.sh` sets sensible defaults in the
+environment and uses `kubectl` to query your cluster for endpoint and
+authentication information. It prefers the current kubeconfig token when one is
+present, which makes it work cleanly with `kind`; if there is no token in the
+kubeconfig it falls back to `kubectl create token`.
+
+For the detailed workflow and available helper commands, see
+[docs/kubernetes-local-development.md](docs/kubernetes-local-development.md).
 
 #### OpenShift (no authentication)
 
@@ -137,7 +183,7 @@ In order to update the `tectonic-console-builder` to a new version (e.g., v29), 
    Note: There could be scenario were you would have to add the new image reference in the "mapping_supplemental_ci_images_ci" file, i.e. to avoid CI downtime for upcoming release cycle.
    Optional: Request for the [rhel-8-base-nodejs-openshift-4.15](https://github.com/openshift-eng/ocp-build-data/pull/3775/files) nodebuilder update if it doesn't match the node version in `tectonic-console-builder`.
 
-#### CodeReady Containers
+#### OpenShift via CodeReady Containers
 
 If you want to use CodeReady for local development, first make sure [it is set up](https://crc.dev/crc/#setting-up-codeready-containers_gsg), and the [OpenShift cluster is started](https://crc.dev/crc/#starting-the-virtual-machine_gsg).
 
@@ -155,61 +201,6 @@ Finally, prepare the environment, and run the console:
 source ./contrib/environment.sh
 ./bin/bridge
 ```
-
-#### Native Kubernetes
-
-We use [`kind`](https://kind.sigs.k8s.io/) as the default Kubernetes test and validation environment for local development.
-
-The quickest end-to-end validation path is:
-
-```shell
-bash contrib/kind-bridge.sh smoke-test
-```
-
-If port `9000` is already in use, run the same flow on a different port:
-
-```shell
-BRIDGE_PORT=9001 bash contrib/kind-bridge.sh smoke-test
-```
-
-For the detailed workflow and available helper commands, see [docs/kubernetes-local-development.md](docs/kubernetes-local-development.md).
-
-If you do not already have a Kubernetes cluster, create one with:
-
-```shell
-kind create cluster --name console
-kubectl cluster-info --context kind-console
-```
-
-If you have a working `kubectl` on your path, you can run the application with:
-
-```
-export KUBECONFIG=/path/to/kubeconfig
-source ./contrib/environment.sh
-./bin/bridge
-```
-
-The script in `contrib/environment.sh` sets sensible defaults in the environment, and uses `kubectl` to query your cluster for endpoint and authentication information. It prefers the current kubeconfig token when one is present, which makes it work cleanly with `kind`; if there is no token in the kubeconfig it falls back to `kubectl create token`.
-
-If you need to target a specific kubeconfig context without changing your current `kubectl` context, set `BRIDGE_K8S_CONTEXT` before sourcing the script:
-
-```shell
-export BRIDGE_K8S_CONTEXT=kind-console
-source ./contrib/environment.sh
-./bin/bridge --public-dir=./frontend/public/dist
-```
-
-To configure the application to run by hand, (or if `environment.sh` doesn't work for some reason) you can manually provide a Kubernetes bearer token with the following steps.
-
-Preferred for `kind` and other modern Kubernetes clusters:
-
-```
-kubectl create token default --namespace=kube-system
-```
-
-Use this token value to set the `BRIDGE_K8S_AUTH_BEARER_TOKEN` environment variable when running Bridge.
-
-If your cluster does not support `kubectl create token`, you can fall back to reading a `kubernetes.io/service-account-token` Secret manually.
 
 ## Operator
 
