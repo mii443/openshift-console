@@ -147,13 +147,13 @@ export const DetailsCard: React.FC = () => {
     <Card data-test-id="details-card">
       <CardHeader
         actions={{
-          actions: (
+          actions: openshiftFlag ? (
             <>
               <Link to="/settings/cluster/" data-test="details-card-view-settings">
                 {t('public~View settings')}
               </Link>
             </>
-          ),
+          ) : null,
           hasNoOffset: false,
           className: 'co-overview-card__actions',
         }}

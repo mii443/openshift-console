@@ -158,6 +158,15 @@ source ./contrib/environment.sh
 
 #### Native Kubernetes
 
+We use [`kind`](https://kind.sigs.k8s.io/) as the default Kubernetes test and validation environment for local development.
+
+If you do not already have a Kubernetes cluster, create one with:
+
+```shell
+kind create cluster --name console
+kubectl cluster-info --context kind-console
+```
+
 If you have a working `kubectl` on your path, you can run the application with:
 
 ```
@@ -166,23 +175,19 @@ source ./contrib/environment.sh
 ./bin/bridge
 ```
 
-The script in `contrib/environment.sh` sets sensible defaults in the environment, and uses `kubectl` to query your cluster for endpoint and authentication information.
+The script in `contrib/environment.sh` sets sensible defaults in the environment, and uses `kubectl` to query your cluster for endpoint and authentication information. It prefers the current kubeconfig token when one is present, which makes it work cleanly with `kind`; if there is no token in the kubeconfig it falls back to `kubectl create token`.
 
 To configure the application to run by hand, (or if `environment.sh` doesn't work for some reason) you can manually provide a Kubernetes bearer token with the following steps.
 
-First get the secret ID that has a type of `kubernetes.io/service-account-token` by running:
+Preferred for `kind` and other modern Kubernetes clusters:
 
 ```
-kubectl get secrets
-```
-
-then get the secret contents:
-
-```
-kubectl describe secrets/<secret-id-obtained-previously>
+kubectl create token default --namespace=kube-system
 ```
 
 Use this token value to set the `BRIDGE_K8S_AUTH_BEARER_TOKEN` environment variable when running Bridge.
+
+If your cluster does not support `kubectl create token`, you can fall back to reading a `kubernetes.io/service-account-token` Secret manually.
 
 ## Operator
 

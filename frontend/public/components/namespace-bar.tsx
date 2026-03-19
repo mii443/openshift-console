@@ -3,7 +3,6 @@ import { useState, useEffect } from 'react';
 import { css } from '@patternfly/react-styles';
 import * as _ from 'lodash';
 import { useConsoleDispatch } from '@console/shared/src/hooks/useConsoleDispatch';
-import { useConsoleSelector } from '@console/shared/src/hooks/useConsoleSelector';
 import { NamespaceBarProps, useActivePerspective } from '@console/dynamic-plugin-sdk';
 import { ALL_NAMESPACES_KEY } from '@console/dynamic-plugin-sdk/src/constants';
 import {
@@ -49,10 +48,10 @@ export const NamespaceBarDropdowns: FC<NamespaceBarDropdownsProps> = ({
   const [activeNamespaceError, setActiveNamespaceError] = useState(false);
   const canListNS = useFlag(FLAGS.CAN_LIST_NS);
   useEffect(() => {
-    if (namespace.loaded) {
+    if (useProjects && namespace.loaded) {
       dispatch(setFlag(FLAGS.SHOW_OPENSHIFT_START_GUIDE, _.isEmpty(namespace.data)));
     }
-  }, [dispatch, namespace.data, namespace.loaded]);
+  }, [dispatch, namespace.data, namespace.loaded, useProjects]);
 
   /* Check if the activeNamespace is present in the cluster */
   useEffect(() => {
@@ -120,9 +119,7 @@ export const NamespaceBar: FC<NamespaceBarProps & { hideProjects?: boolean }> = 
   children,
   hideProjects = false,
 }) => {
-  const useProjects = useConsoleSelector<boolean>(({ k8s }) =>
-    k8s.hasIn(['RESOURCES', 'models', ProjectModel.kind]),
-  );
+  const useProjects = !!useFlag(FLAGS.OPENSHIFT);
   return (
     <div className={css('co-namespace-bar', { 'co-namespace-bar--no-project': hideProjects })}>
       {hideProjects ? (

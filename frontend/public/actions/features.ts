@@ -57,6 +57,8 @@ const detectCanCreateProject = (dispatch) =>
       if (status === 403) {
         dispatch(setFlag(FLAGS.CAN_CREATE_PROJECT, false));
         dispatch(setCreateProjectMessage(_.get(err, 'json.details.causes[0].message')));
+      } else if (status === 404) {
+        dispatch(setFlag(FLAGS.CAN_CREATE_PROJECT, false));
       } else if (!_.includes([400, 404, 500], status)) {
         retryFlagDetection(dispatch, detectCanCreateProject);
       }
