@@ -96,6 +96,38 @@ kubeconfig it falls back to `kubectl create token`.
 For the detailed workflow and available helper commands, see
 [docs/kubernetes-local-development.md](docs/kubernetes-local-development.md).
 
+#### Helm install on an existing Kubernetes cluster
+
+If you want to install this fork into an existing Kubernetes cluster instead of
+running it locally with `bridge`, use the Helm chart in `charts/console`.
+
+Build and push an image first:
+
+```shell
+docker build -t ghcr.io/your-org/console-k8s:latest .
+docker push ghcr.io/your-org/console-k8s:latest
+```
+
+Then install the chart:
+
+```shell
+helm install console ./charts/console \
+  --namespace console \
+  --create-namespace \
+  --set image.repository=ghcr.io/your-org/console-k8s \
+  --set image.tag=latest
+```
+
+This chart is intentionally minimal:
+
+- runs `bridge` with `--user-auth=disabled`
+- exposes a `Service` by default
+- supports optional `Ingress`
+- binds the chart ServiceAccount to `cluster-admin` by default for initial Kubernetes compatibility
+
+For detailed install, upgrade, uninstall, and Ingress examples, see
+[docs/kubernetes-helm-install.md](docs/kubernetes-helm-install.md).
+
 #### OpenShift (no authentication)
 
 For local development, you can disable OAuth and run bridge with an OpenShift

@@ -1,0 +1,6 @@
+apiVersion: v2
+name: console
+description: Non-official Helm chart for the Kubernetes-compatible OpenShift Console fork
+type: application
+version: 0.1.0
+appVersion: "0.0.0"

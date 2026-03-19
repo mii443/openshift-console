@@ -1,0 +1,17 @@
+This is a non-official Helm installation of the Kubernetes-compatible console fork.
+
+The chart starts bridge with authentication disabled:
+  --user-auth=disabled
+
+The ServiceAccount is bound to the built-in cluster-admin ClusterRole by default
+to keep the initial Kubernetes experience simple. Review this before using it
+outside local development or a trusted admin-controlled cluster.
+
+Get the release status:
+  kubectl get pods -n {{ .Release.Namespace }} -l app.kubernetes.io/instance={{ .Release.Name }}
+
+Port-forward locally:
+  kubectl port-forward -n {{ .Release.Namespace }} svc/{{ include "console.fullname" . }} 9000:{{ .Values.service.port }}
+
+Open the UI:
+  http://127.0.0.1:9000/
