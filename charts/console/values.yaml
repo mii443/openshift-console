@@ -1,5 +1,7 @@
 replicaCount: 1
 
+userSettingsLocation: localstorage
+
 image:
   repository: ""
   tag: ""

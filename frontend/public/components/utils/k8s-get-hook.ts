@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { k8sGet, K8sKind, K8sResourceCommon } from '../../module/k8s';
 
 export const useK8sGet = <R extends K8sResourceCommon = K8sResourceCommon>(
-  kind: K8sKind,
+  kind: K8sKind | null,
   name?: string,
   namespace?: string,
   opts?: { [k: string]: string },
@@ -11,6 +11,13 @@ export const useK8sGet = <R extends K8sResourceCommon = K8sResourceCommon>(
   const [loaded, setLoaded] = useState(false);
   const [loadError, setLoadError] = useState();
   useEffect(() => {
+    if (!kind) {
+      setLoadError(null);
+      setLoaded(true);
+      setData(null);
+      return;
+    }
+
     const fetch = async () => {
       try {
         setLoadError(null);

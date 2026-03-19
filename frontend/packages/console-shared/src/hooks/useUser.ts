@@ -4,8 +4,10 @@ import { getUser, getUserResource, setUserResource } from '@console/dynamic-plug
 import { useK8sGet } from '@console/internal/components/utils/k8s-get-hook';
 import { UserModel } from '@console/internal/models';
 import type { UserKind } from '@console/internal/module/k8s/types';
+import { FLAGS } from '@console/shared/src/constants/common';
 import { useConsoleDispatch } from '@console/shared/src/hooks/useConsoleDispatch';
 import { useConsoleSelector } from '@console/shared/src/hooks/useConsoleSelector';
+import { useFlag } from '@console/shared/src/hooks/useFlag';
 
 /**
  * Custom hook that provides centralized user data fetching and management.
@@ -17,6 +19,7 @@ import { useConsoleSelector } from '@console/shared/src/hooks/useConsoleSelector
 export const useUser = () => {
   const { t } = useTranslation('public');
   const dispatch = useConsoleDispatch();
+  const isOpenShift = useFlag(FLAGS.OPENSHIFT);
 
   // Get current user info from Redux (username, groups, etc.)
   const user = useConsoleSelector(getUser);
@@ -26,7 +29,7 @@ export const useUser = () => {
 
   // Fetch user resource from k8s API
   const [userResourceData, userResourceLoaded, userResourceError] = useK8sGet<UserKind>(
-    UserModel,
+    isOpenShift ? UserModel : null,
     '~',
   );
 

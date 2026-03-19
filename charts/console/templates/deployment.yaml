@@ -25,6 +25,7 @@ spec:
           args:
             - --public-dir=/opt/bridge/static
             - --user-auth=disabled
+            - --user-settings-location={{ .Values.userSettingsLocation }}
             {{- if .Values.plugins.enabled }}
             {{- range .Values.plugins.entries }}
             - --plugins={{ .name }}={{ .endpoint }}
