@@ -1,12 +1,17 @@
 import type { FC, Ref, MouseEvent, ComponentType } from 'react';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import * as _ from 'lodash';
 import { useTranslation } from 'react-i18next';
 import {
   Badge,
   Card,
+  CardBody,
   CardHeader,
   CardTitle,
+  DescriptionList,
+  DescriptionListDescription,
+  DescriptionListGroup,
+  DescriptionListTerm,
   MenuToggle,
   MenuToggleElement,
   Select,
@@ -39,6 +44,8 @@ import {
   humanizeCpuCores,
   humanizeNumber,
   humanizeDecimalBytesPerSec,
+  humanizePercentage,
+  convertToBaseValue,
 } from '../../../utils/units';
 import { getRangeVectorStats, getInstantVectorStats } from '../../../graphs/utils';
 import {
@@ -46,13 +53,20 @@ import {
   getUtilizationQueries,
   OverviewQuery,
 } from '@console/shared/src/promql/cluster-dashboard';
-import { MachineConfigPoolModel } from '../../../../models';
+import { MachineConfigPoolModel, NodeModel, PodModel } from '../../../../models';
 import { getPrometheusQueryResponse } from '../../../../actions/dashboards';
 import { DataPoint, PrometheusResponse } from '../../../graphs';
 import { useK8sWatchResource } from '@console/internal/components/utils/k8s-watch-hook';
-import { MachineConfigPoolKind, referenceForModel } from '@console/internal/module/k8s';
+import {
+  K8sResourceKind,
+  MachineConfigPoolKind,
+  referenceForModel,
+} from '@console/internal/module/k8s';
 import { UtilizationDurationDropdown } from '@console/shared/src/components/dashboard/utilization-card/UtilizationDurationDropdown';
 import { useUtilizationDuration } from '@console/shared/src/hooks/useUtilizationDuration';
+import { useFlag } from '@console/shared/src/hooks/useFlag';
+import { FLAGS } from '@console/shared/src/constants/common';
+import { usePrometheusGate } from '@console/shared/src/hooks/usePrometheusGate';
 import {
   ClusterUtilizationContext,
   CPUPopover,
@@ -62,8 +76,152 @@ import {
   NetworkOutPopover,
   PodPopover,
 } from './utilization-popovers';
+import { coFetchJSON } from '../../../../co-fetch';
+import { k8sBasePath } from '../../../../module/k8s';
 
 const networkPopovers = [NetworkInPopover, NetworkOutPopover];
+
+type NodeMetric = {
+  metadata?: { name?: string };
+  usage?: { cpu?: string; memory?: string };
+};
+
+type NodeMetricsResponse = {
+  items?: NodeMetric[];
+};
+
+const KubernetesUtilizationItem: FC<{ title: string; value?: string; error?: string }> = ({
+  title,
+  value,
+  error,
+}) => (
+  <DescriptionListGroup>
+    <DescriptionListTerm>{title}</DescriptionListTerm>
+    <DescriptionListDescription>{error || value}</DescriptionListDescription>
+  </DescriptionListGroup>
+);
+
+const KubernetesUtilizationCard: FC = () => {
+  const { t } = useTranslation();
+  const [nodeMetrics, setNodeMetrics] = useState<NodeMetric[]>([]);
+  const [nodeMetricsError, setNodeMetricsError] = useState();
+  const [nodes, nodesLoaded, nodesLoadError] = useK8sWatchResource<K8sResourceKind[]>({
+    isList: true,
+    kind: referenceForModel(NodeModel),
+  });
+  const [pods, podsLoaded, podsLoadError] = useK8sWatchResource<K8sResourceKind[]>({
+    isList: true,
+    kind: referenceForModel(PodModel),
+  });
+
+  useEffect(() => {
+    coFetchJSON(`${k8sBasePath}/apis/metrics.k8s.io/v1beta1/nodes`).then(
+      (response) => {
+        setNodeMetrics(((response as NodeMetricsResponse).items ?? []) as NodeMetric[]);
+        setNodeMetricsError(undefined);
+      },
+      (error) => {
+        setNodeMetrics([]);
+        setNodeMetricsError(error);
+      },
+    );
+  }, []);
+
+  const metricsByNodeName = useMemo(() => _.keyBy(nodeMetrics, (metric) => metric.metadata?.name), [
+    nodeMetrics,
+  ]);
+
+  const totals = useMemo(() => {
+    const aggregate = (nodes ?? []).reduce(
+      (acc, node) => {
+        const allocatable = node.status?.allocatable ?? {};
+        const metric = metricsByNodeName[node.metadata?.name];
+        acc.totalCPU += convertToBaseValue(allocatable.cpu) ?? 0;
+        acc.totalMemory += convertToBaseValue(allocatable.memory) ?? 0;
+        acc.totalPods += convertToBaseValue(allocatable.pods) ?? 0;
+        acc.usedCPU += convertToBaseValue(metric?.usage?.cpu) ?? 0;
+        acc.usedMemory += convertToBaseValue(metric?.usage?.memory) ?? 0;
+        const readyCondition = node.status?.conditions?.find(
+          (condition) => condition.type === 'Ready',
+        );
+        if (readyCondition?.status === 'True') {
+          acc.readyNodes += 1;
+        }
+        return acc;
+      },
+      {
+        totalCPU: 0,
+        usedCPU: 0,
+        totalMemory: 0,
+        usedMemory: 0,
+        totalPods: 0,
+        readyNodes: 0,
+      },
+    );
+
+    return {
+      ...aggregate,
+      totalNodes: nodes?.length ?? 0,
+      runningPods: (pods ?? []).filter(
+        (pod) => !['Succeeded', 'Failed'].includes(pod.status?.phase),
+      ).length,
+    };
+  }, [metricsByNodeName, nodes, pods]);
+
+  const notAvailable = t('public~Not available');
+  const getUsageValue = (used: number, total: number, humanizeValue) => {
+    if (!total) {
+      return notAvailable;
+    }
+    return `${humanizeValue(used).string} / ${humanizeValue(total).string} (${
+      humanizePercentage((used / total) * 100).string
+    })`;
+  };
+
+  return (
+    <Card data-test-id="utilization-card">
+      <CardHeader>
+        <CardTitle data-test="utilization-card__title">{t('public~Cluster utilization')}</CardTitle>
+      </CardHeader>
+      <CardBody>
+        <DescriptionList isCompact>
+          <KubernetesUtilizationItem
+            title={t('public~CPU')}
+            value={getUsageValue(totals.usedCPU, totals.totalCPU, humanizeCpuCores)}
+            error={!nodesLoaded || nodeMetricsError || nodesLoadError ? notAvailable : undefined}
+          />
+          <KubernetesUtilizationItem
+            title={t('public~Memory')}
+            value={getUsageValue(totals.usedMemory, totals.totalMemory, humanizeBinaryBytes)}
+            error={!nodesLoaded || nodeMetricsError || nodesLoadError ? notAvailable : undefined}
+          />
+          <KubernetesUtilizationItem
+            title={t('public~Pod count')}
+            value={
+              totals.totalPods
+                ? `${humanizeNumber(totals.runningPods).string} / ${
+                    humanizeNumber(totals.totalPods).string
+                  } (${humanizePercentage((totals.runningPods / totals.totalPods) * 100).string})`
+                : notAvailable
+            }
+            error={!podsLoaded || podsLoadError ? notAvailable : undefined}
+          />
+          <KubernetesUtilizationItem
+            title={t('public~Nodes')}
+            value={
+              totals.totalNodes
+                ? `${humanizeNumber(totals.readyNodes).string} ${t('public~Ready')} / ${
+                    humanizeNumber(totals.totalNodes).string
+                  }`
+                : notAvailable
+            }
+            error={!nodesLoaded || nodesLoadError ? notAvailable : undefined}
+          />
+        </DescriptionList>
+      </CardBody>
+    </Card>
+  );
+};
 
 export const PrometheusUtilizationItem: FC<PrometheusUtilizationItemProps> = ({
   utilizationQuery,
@@ -259,12 +417,19 @@ const UtilizationCardNodeFilter: FC<UtilizationCardNodeFilterProps> = ({
 
 export const UtilizationCard = () => {
   const { t } = useTranslation();
+  const hasMachineConfig = useFlag(FLAGS.MACHINE_CONFIG);
+  const openshiftFlag = useFlag(FLAGS.OPENSHIFT);
+  const prometheusAvailable = usePrometheusGate();
   const [machineConfigPools, machineConfigPoolsLoaded] = useK8sWatchResource<
     MachineConfigPoolKind[]
-  >({
-    isList: true,
-    kind: referenceForModel(MachineConfigPoolModel),
-  });
+  >(
+    hasMachineConfig
+      ? {
+          isList: true,
+          kind: referenceForModel(MachineConfigPoolModel),
+        }
+      : ({} as never),
+  );
   // TODO: add `useUserPreference` to get default selected
   const [selectedNodes, setSelectedNodes] = useState<string[]>([]);
 
@@ -290,18 +455,26 @@ export const UtilizationCard = () => {
     () => [getUtilizationQueries(nodeType), getMultilineQueries(nodeType)],
     [nodeType],
   );
+  const cardLoaded = hasMachineConfig ? machineConfigPoolsLoaded : true;
+  const availableMachineConfigPools = hasMachineConfig ? machineConfigPools : [];
+  const isOpenShift = !!openshiftFlag;
+
+  if (!isOpenShift && !prometheusAvailable) {
+    return <KubernetesUtilizationCard />;
+  }
+
   return (
-    machineConfigPoolsLoaded && (
+    cardLoaded && (
       <Card data-test-id="utilization-card">
         <CardHeader
           actions={{
             actions: (
               <>
                 <Split>
-                  {machineConfigPools.length > 0 && (
+                  {availableMachineConfigPools.length > 0 && (
                     <SplitItem>
                       <UtilizationCardNodeFilter
-                        machineConfigPools={machineConfigPools}
+                        machineConfigPools={availableMachineConfigPools}
                         onNodeSelect={onNodeSelect}
                         selectedNodes={selectedNodes}
                       />

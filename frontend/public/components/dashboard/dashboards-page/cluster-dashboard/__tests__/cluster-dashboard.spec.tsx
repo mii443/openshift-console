@@ -93,11 +93,11 @@ describe('ClusterDashboard', () => {
     const mainCards = container.querySelector('[data-test="main-cards"]');
     const rightCards = container.querySelector('[data-test="right-cards"]');
 
+    expect(mainCards).toHaveTextContent('Status Card');
+    expect(mainCards).toHaveTextContent('Utilization Card');
     expect(leftCards).toHaveTextContent('Details Card');
     expect(leftCards).toHaveTextContent('Inventory Card');
-    expect(mainCards).not.toHaveTextContent('Status Card');
-    expect(mainCards).not.toHaveTextContent('Utilization Card');
-    expect(rightCards).not.toHaveTextContent('Activity Card');
+    expect(rightCards).toHaveTextContent('Activity Card');
     expect(screen.queryByText('Getting Started Section')).not.toBeInTheDocument();
   });
 

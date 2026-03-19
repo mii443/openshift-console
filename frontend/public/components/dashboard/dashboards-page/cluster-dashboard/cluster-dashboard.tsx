@@ -20,9 +20,6 @@ import { CLUSTER_DASHBOARD_USER_SETTINGS_KEY } from './getting-started/constants
 const mainCards = [{ Card: StatusCard }, { Card: UtilizationCard }];
 const leftCards = [{ Card: DetailsCard }, { Card: InventoryCard }];
 const rightCards = [{ Card: ActivityCard }];
-const kubernetesMainCards = [];
-const kubernetesLeftCards = [{ Card: DetailsCard }, { Card: InventoryCard }];
-const kubernetesRightCards = [];
 
 export const ClusterDashboard: FC<{}> = () => {
   const [infrastructure, infrastructureLoaded, infrastructureError] = useK8sGet<K8sResourceKind>(
@@ -42,21 +39,13 @@ export const ClusterDashboard: FC<{}> = () => {
   };
 
   const isOpenShift = flagPending(openshiftFlag) || openshiftFlag;
-  const selectedMainCards = isOpenShift ? mainCards : kubernetesMainCards;
-  const selectedLeftCards = isOpenShift ? leftCards : kubernetesLeftCards;
-  const selectedRightCards = isOpenShift ? rightCards : kubernetesRightCards;
-
   return (
     <ClusterDashboardContext.Provider value={context}>
       <Dashboard>
         {isOpenShift && consoleCapabilityGettingStartedBannerIsEnabled && (
           <GettingStartedSection userSettingKey={CLUSTER_DASHBOARD_USER_SETTINGS_KEY} />
         )}
-        <DashboardGrid
-          mainCards={selectedMainCards}
-          leftCards={selectedLeftCards}
-          rightCards={selectedRightCards}
-        />
+        <DashboardGrid mainCards={mainCards} leftCards={leftCards} rightCards={rightCards} />
       </Dashboard>
     </ClusterDashboardContext.Provider>
   );

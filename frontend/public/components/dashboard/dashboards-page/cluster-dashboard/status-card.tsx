@@ -25,6 +25,7 @@ import { Gallery, GalleryItem, Card, CardHeader, CardTitle } from '@patternfly/r
 import { BlueArrowCircleUpIcon } from '@console/shared/src/components/status/icons';
 import { FLAGS } from '@console/shared/src/constants/common';
 import { useCanClusterUpgrade } from '@console/shared/src/hooks/useCanClusterUpgrade';
+import { usePrometheusGate } from '@console/shared/src/hooks/usePrometheusGate';
 
 import AlertsBody from '@console/shared/src/components/dashboard/status-card/AlertsBody';
 import HealthBody from '@console/shared/src/components/dashboard/status-card/HealthBody';
@@ -49,6 +50,7 @@ import {
 } from './health-item';
 import { useK8sWatchResource } from '../../../utils/k8s-watch-hook';
 import { useFlag } from '@console/shared/src/hooks/useFlag';
+import { flagPending } from '../../../../reducers/features';
 import {
   useNamespacedNotificationAlerts,
   useNotificationAlerts,
@@ -129,6 +131,9 @@ const mapStateToProps = (state: RootState) => ({
   k8sModels: state.k8s.getIn(['RESOURCES', 'models']),
 });
 export const StatusCard = connect<StatusCardProps>(mapStateToProps)(({ k8sModels }) => {
+  const openshiftFlag = useFlag(FLAGS.OPENSHIFT);
+  const monitoringFlag = useFlag(FLAGS.MONITORING);
+  const prometheusAvailable = usePrometheusGate();
   const [subsystemExtensions] = useResolvedExtensions<DashboardsOverviewHealthSubsystem>(
     isDashboardsOverviewHealthSubsystem,
   );
@@ -184,17 +189,21 @@ export const StatusCard = connect<StatusCardProps>(mapStateToProps)(({ k8sModels
     });
   }
 
+  const showAlertsLink = (flagPending(openshiftFlag) || openshiftFlag) && monitoringFlag;
+  const showAlertBody = monitoringFlag && prometheusAvailable;
+  const showHealthItems = healthItems.length > 0;
+
   return (
     <Card data-test-id="status-card">
       <CardHeader
         actions={{
-          actions: (
+          actions: showAlertsLink ? (
             <>
               <Link to="/monitoring/alerts" data-test="status-card-view-alerts">
                 {t('public~View alerts')}
               </Link>
             </>
-          ),
+          ) : null,
           hasNoOffset: false,
           className: 'co-overview-card__actions',
         }}
@@ -202,17 +211,21 @@ export const StatusCard = connect<StatusCardProps>(mapStateToProps)(({ k8sModels
         <CardTitle>{t('public~Status')}</CardTitle>
       </CardHeader>
       <HealthBody>
-        <Gallery className="co-overview-status__health" hasGutter>
-          {healthItems.map((item) => {
-            return (
-              <GalleryItem key={item.title} data-test={item.title}>
-                {item.Component}
-              </GalleryItem>
-            );
-          })}
-        </Gallery>
+        {showHealthItems ? (
+          <Gallery className="co-overview-status__health" hasGutter>
+            {healthItems.map((item) => {
+              return (
+                <GalleryItem key={item.title} data-test={item.title}>
+                  {item.Component}
+                </GalleryItem>
+              );
+            })}
+          </Gallery>
+        ) : (
+          <div className="pf-v6-u-text-color-subtle">{t('public~Not available')}</div>
+        )}
       </HealthBody>
-      <DashboardAlerts />
+      {showAlertBody ? <DashboardAlerts /> : null}
     </Card>
   );
 });
