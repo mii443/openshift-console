@@ -25,6 +25,15 @@ spec:
           args:
             - --public-dir=/opt/bridge/static
             - --user-auth=disabled
+            {{- if .Values.plugins.enabled }}
+            {{- range .Values.plugins.entries }}
+            - --plugins={{ .name }}={{ .endpoint }}
+            {{- end }}
+            {{- $pluginOrder := include "console.pluginOrder" . }}
+            {{- if $pluginOrder }}
+            - --plugins-order={{ $pluginOrder }}
+            {{- end }}
+            {{- end }}
           ports:
             - name: http
               containerPort: 9000

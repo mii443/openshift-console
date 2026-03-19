@@ -128,6 +128,36 @@ This chart is intentionally minimal:
 For detailed install, upgrade, uninstall, and Ingress examples, see
 [docs/kubernetes-helm-install.md](docs/kubernetes-helm-install.md).
 
+#### Enabling Virtualization UI
+
+This fork does not vendor the Virtualization frontend into the main bundle.
+Instead, it supports the existing `kubevirt-plugin` as a dynamic plugin.
+
+For local bridge runs, point `bridge` at a running `kubevirt-plugin` service:
+
+```shell
+export BRIDGE_PLUGINS="kubevirt-plugin=http://127.0.0.1:9443"
+source ./contrib/environment.sh
+./bin/bridge --public-dir=./frontend/public/dist
+```
+
+For Helm installs, enable plugins and provide the plugin service endpoint:
+
+```shell
+helm upgrade --install console ./charts/console \
+  --namespace console \
+  --create-namespace \
+  --set image.repository=ghcr.io/your-org/console-k8s \
+  --set image.tag=latest \
+  --set plugins.enabled=true \
+  --set 'plugins.entries[0].name=kubevirt-plugin' \
+  --set 'plugins.entries[0].endpoint=http://kubevirt-plugin.kubevirt-plugin.svc:9443'
+```
+
+This assumes the cluster already has the KubeVirt APIs and a compatible
+`kubevirt-plugin` deployment available. The plugin version should match the
+Console version you are targeting.
+
 #### OpenShift (no authentication)
 
 For local development, you can disable OAuth and run bridge with an OpenShift

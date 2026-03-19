@@ -86,3 +86,51 @@ Uninstall:
 ```bash
 helm uninstall console --namespace console
 ```
+
+## 5. Enable Virtualization UI With kubevirt-plugin
+
+This fork enables Virtualization UI by loading the external `kubevirt-plugin`
+through the Console dynamic plugin endpoint. The plugin is not bundled into the
+console image.
+
+Prerequisites:
+
+- KubeVirt APIs are already installed on the cluster
+- A compatible `kubevirt-plugin` service is already deployed and reachable from
+  the console namespace
+
+Example:
+
+```bash
+helm upgrade --install console ./charts/console \
+  --namespace console \
+  --create-namespace \
+  --set image.repository=ghcr.io/your-org/console-k8s \
+  --set image.tag=latest \
+  --set plugins.enabled=true \
+  --set 'plugins.entries[0].name=kubevirt-plugin' \
+  --set 'plugins.entries[0].endpoint=http://kubevirt-plugin.kubevirt-plugin.svc:9443'
+```
+
+If you need to control plugin resolution order explicitly, set `plugins.order`:
+
+```bash
+helm upgrade --install console ./charts/console \
+  --namespace console \
+  --create-namespace \
+  --set image.repository=ghcr.io/your-org/console-k8s \
+  --set image.tag=latest \
+  --set plugins.enabled=true \
+  --set 'plugins.entries[0].name=kubevirt-plugin' \
+  --set 'plugins.entries[0].endpoint=http://kubevirt-plugin.kubevirt-plugin.svc:9443' \
+  --set 'plugins.order[0]=kubevirt-plugin'
+```
+
+After rollout, verify the plugin manifest through the console proxy:
+
+```bash
+kubectl port-forward -n console svc/console 9000:9000
+curl -I http://127.0.0.1:9000/api/plugins/kubevirt-plugin/plugin-manifest.json
+```
+
+The expected response is `200 OK`.

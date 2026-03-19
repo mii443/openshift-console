@@ -41,3 +41,15 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- default "default" .Values.serviceAccount.name -}}
 {{- end -}}
 {{- end -}}
+
+{{- define "console.pluginOrder" -}}
+{{- if .Values.plugins.order -}}
+{{- join "," .Values.plugins.order -}}
+{{- else -}}
+{{- $pluginNames := list -}}
+{{- range .Values.plugins.entries -}}
+{{- $pluginNames = append $pluginNames .name -}}
+{{- end -}}
+{{- join "," $pluginNames -}}
+{{- end -}}
+{{- end -}}

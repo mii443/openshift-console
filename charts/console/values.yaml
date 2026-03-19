@@ -28,3 +28,8 @@ ingress:
   tls: []
 
 resources: {}
+
+plugins:
+  enabled: false
+  order: []
+  entries: []

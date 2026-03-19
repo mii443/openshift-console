@@ -35,6 +35,7 @@ Environment overrides:
   BRIDGE_HOST                    bridge listen host (default: 127.0.0.1)
   BRIDGE_PORT                    bridge listen port (default: 9000)
   SMOKE_TEST_TIMEOUT_SECONDS     smoke test wait timeout (default: 30)
+  BRIDGE_PLUGINS                 optional bridge plugin mapping, for example kubevirt-plugin=http://127.0.0.1:9443
 EOF
 }
 
