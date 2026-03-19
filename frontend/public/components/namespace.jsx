@@ -831,10 +831,25 @@ export const ProjectList = (props) => {
 
 export const ProjectsPage = (props) => {
   const { t } = useTranslation();
+  const isOpenShift = useFlag(FLAGS.OPENSHIFT);
   const createProjectModal = useCreateProjectModal();
+  const createNamespaceModal = useCreateNamespaceModal();
   // Skip self-subject access review for projects since they use a special project request API.
   // `FLAGS.CAN_CREATE_PROJECT` determines if the user can create projects.
   const canCreateProject = useFlag(FLAGS.CAN_CREATE_PROJECT);
+
+  if (!isOpenShift) {
+    return (
+      <ListPage
+        {...props}
+        ListComponent={NamespacesList}
+        canCreate={true}
+        createHandler={() => createNamespaceModal()}
+        omitFilterToolbar={true}
+      />
+    );
+  }
+
   return (
     <ListPage
       {...props}
@@ -1062,7 +1077,9 @@ export const NamespaceDetails = ({ obj: ns, customData }) => {
   const links = getNamespaceDashboardConsoleLinks(ns, consoleLinks);
   return (
     <div>
-      {perspective === 'dev' && <DocumentTitle>{t('public~Project details')}</DocumentTitle>}
+      {perspective === 'dev' && (
+        <DocumentTitle>{t('public~{{kind}} details', { kind: ns.kind })}</DocumentTitle>
+      )}
       <PaneBody>
         {!customData?.hideHeading && (
           <SectionHeading text={t('public~{{kind}} details', { kind: ns.kind })} />
@@ -1117,6 +1134,38 @@ export const NamespacesDetailsPage = (props) => (
 );
 
 export const ProjectsDetailsPage = (props) => {
+  const isOpenShift = useFlag(FLAGS.OPENSHIFT);
+
+  if (!isOpenShift) {
+    return (
+      <DetailsPage
+        {...props}
+        kind={referenceForModel(NamespaceModel)}
+        customActionMenu={(k8sObj, obj) => (
+          <LazyActionMenu
+            context={{ [referenceForModel(NamespaceModel)]: obj }}
+            variant={ActionMenuVariant.DROPDOWN}
+          />
+        )}
+        pages={[
+          {
+            href: '',
+            nameKey: 'public~Overview',
+            component: ProjectDashboard,
+          },
+          {
+            href: 'details',
+            nameKey: 'public~Details',
+            component: NamespaceDetails,
+          },
+          navFactory.editYaml(),
+          navFactory.workloads(OverviewListPage),
+          navFactory.roles(RolesPage),
+        ]}
+      />
+    );
+  }
+
   return (
     <DetailsPage
       {...props}

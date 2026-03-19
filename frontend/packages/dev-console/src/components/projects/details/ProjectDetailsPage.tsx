@@ -8,12 +8,14 @@ import { NamespaceDetails } from '@console/internal/components/namespace';
 import { withStartGuide } from '@console/internal/components/start-guide';
 import type { Page } from '@console/internal/components/utils';
 import { useAccessReview } from '@console/internal/components/utils';
-import { ProjectModel, RoleBindingModel } from '@console/internal/models';
+import { NamespaceModel, ProjectModel, RoleBindingModel } from '@console/internal/models';
 import { referenceForModel } from '@console/internal/module/k8s';
 import LazyActionMenu from '@console/shared/src/components/actions/LazyActionMenu';
 import { ActionMenuVariant } from '@console/shared/src/components/actions/types';
 import { DocumentTitle } from '@console/shared/src/components/document-title/DocumentTitle';
 import { ALL_NAMESPACES_KEY } from '@console/shared/src/constants';
+import { FLAGS } from '@console/shared/src/constants/common';
+import { useFlag } from '@console/shared/src/hooks/useFlag';
 import NamespacedPage, { NamespacedPageVariants } from '../../NamespacedPage';
 import ProjectAccessPage from '../../project-access/ProjectAccessPage';
 import CreateProjectListPage, { CreateAProjectButton } from '../CreateProjectListPage';
@@ -33,23 +35,32 @@ const handleNamespaceChange = (newNamespace: string, navigate: NavigateFunction)
 const ProjectDetails = (props) => {
   const { t } = useTranslation();
   const { activeNamespace, pages } = props;
+  const isOpenShift = useFlag(FLAGS.OPENSHIFT);
+  const resourceModel = isOpenShift ? ProjectModel : NamespaceModel;
+
   return (
     <DetailsPage
       {...props}
       breadcrumbsFor={() => [
-        { name: t('devconsole~Projects'), path: '/project-details/all-namespaces' },
-        { name: t('devconsole~Project Details'), path: `/project-details/ns/${activeNamespace}` },
+        {
+          name: isOpenShift ? t('devconsole~Projects') : t('public~Namespaces'),
+          path: '/project-details/all-namespaces',
+        },
+        {
+          name: isOpenShift ? t('devconsole~Project Details') : activeNamespace,
+          path: `/project-details/ns/${activeNamespace}`,
+        },
       ]}
       name={activeNamespace}
-      kind={referenceForModel(ProjectModel)}
+      kind={referenceForModel(resourceModel)}
       customActionMenu={(k8sObj, obj) => (
         <LazyActionMenu
-          context={{ [referenceForModel(ProjectModel)]: obj }}
+          context={{ [referenceForModel(resourceModel)]: obj }}
           variant={ActionMenuVariant.DROPDOWN}
           label={t('devconsole~Actions')}
         />
       )}
-      kindObj={ProjectModel}
+      kindObj={resourceModel}
       customData={{ activeNamespace, hideHeading: true }}
       pages={pages}
     />
@@ -60,6 +71,11 @@ export const PageContents: FC<MonitoringPageProps> = ({ noProjectsAvailable, ...
   const { t } = useTranslation();
   const params = useParams();
   const activeNamespace = params.ns;
+  const isOpenShift = useFlag(FLAGS.OPENSHIFT);
+  const emptyStateTitle = isOpenShift
+    ? 'Select a Project to view its details'
+    : 'Select a Namespace to view its details';
+  const pageTitle = isOpenShift ? t('devconsole~Project Details') : t('public~Namespaces');
 
   const canListRoleBindings = useAccessReview({
     group: RoleBindingModel.apiGroup,
@@ -101,10 +117,10 @@ export const PageContents: FC<MonitoringPageProps> = ({ noProjectsAvailable, ...
   return !noProjectsAvailable && activeNamespace ? (
     <ProjectDetails {...props} activeNamespace={activeNamespace} pages={pages} />
   ) : (
-    <CreateProjectListPage title={t('devconsole~Project Details')}>
+    <CreateProjectListPage title={pageTitle}>
       {(openProjectModal) => (
         <Trans t={t} ns="devconsole">
-          Select a Project to view its details
+          {emptyStateTitle}
           <CreateAProjectButton openProjectModal={openProjectModal} />.
         </Trans>
       )}
@@ -117,9 +133,12 @@ const PageContentsWithStartGuide = withStartGuide<MonitoringPageProps>(PageConte
 export const ProjectDetailsPage: FC<MonitoringPageProps> = (props) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const isOpenShift = useFlag(FLAGS.OPENSHIFT);
   return (
     <>
-      <DocumentTitle>{t('devconsole~Project Details')}</DocumentTitle>
+      <DocumentTitle>
+        {isOpenShift ? t('devconsole~Project Details') : t('public~Namespaces')}
+      </DocumentTitle>
       <NamespacedPage
         hideApplications
         variant={NamespacedPageVariants.light}

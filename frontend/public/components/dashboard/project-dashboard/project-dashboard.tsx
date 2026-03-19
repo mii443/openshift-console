@@ -7,7 +7,7 @@ import { useActivePerspective } from '@console/dynamic-plugin-sdk';
 import Dashboard from '@console/shared/src/components/dashboard/Dashboard';
 import DashboardGrid from '@console/shared/src/components/dashboard/DashboardGrid';
 import { useK8sWatchResource } from '@console/internal/components/utils/k8s-watch-hook';
-import { ConsoleLinkModel } from '@console/internal/models';
+import { ConsoleLinkModel, ProjectModel } from '@console/internal/models';
 import { K8sResourceKind, LabelSelector, referenceForModel, Selector } from '../../../module/k8s';
 import { DetailsCard } from './details-card';
 import { StatusCard } from './status-card';
@@ -73,7 +73,11 @@ export const ProjectDashboard: FC<ProjectDashboardProps> = ({ obj }) => {
 
   return (
     <>
-      {perspective === 'dev' && <DocumentTitle>{t('public~Project overview')}</DocumentTitle>}
+      {perspective === 'dev' && (
+        <DocumentTitle>
+          {obj.kind === ProjectModel.kind ? t('public~Project overview') : obj.metadata?.name}
+        </DocumentTitle>
+      )}
       <ProjectDashboardContext.Provider value={context}>
         <Dashboard>
           <DevGettingStartedSection

@@ -2,6 +2,8 @@ import type { FC, ComponentType, ReactNode } from 'react';
 import { ListPage } from '@console/internal/components/factory';
 import { ProjectsTable } from '@console/internal/components/namespace';
 import { PageHeading } from '@console/shared/src/components/heading/PageHeading';
+import { FLAGS } from '@console/shared/src/constants/common';
+import { useFlag } from '@console/shared/src/hooks/useFlag';
 import './ProjectListPage.scss';
 
 export type ProjectListPageProps = {
@@ -16,20 +18,24 @@ const ProjectListPage: FC<ProjectListPageProps> = ({
   listComponent,
   helpText,
   ...listPageProps
-}) => (
-  <div className="odc-project-list-page">
-    <PageHeading title={title} badge={badge} helpText={helpText} />
-    <ListPage
-      {...listPageProps}
-      showTitle={false}
-      kind="Project"
-      ListComponent={listComponent || ProjectsTable}
-      canCreate={false}
-      filterLabel="by name or display name"
-      textFilter="project-name"
-      omitFilterToolbar
-    />
-  </div>
-);
+}) => {
+  const isOpenShift = useFlag(FLAGS.OPENSHIFT);
+
+  return (
+    <div className="odc-project-list-page">
+      <PageHeading title={title} badge={badge} helpText={helpText} />
+      <ListPage
+        {...listPageProps}
+        showTitle={false}
+        kind={isOpenShift ? 'Project' : 'Namespace'}
+        ListComponent={listComponent || ProjectsTable}
+        canCreate={false}
+        filterLabel="by name or display name"
+        textFilter="project-name"
+        omitFilterToolbar
+      />
+    </div>
+  );
+};
 
 export default ProjectListPage;
