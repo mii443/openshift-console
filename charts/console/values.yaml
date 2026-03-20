@@ -31,6 +31,9 @@ ingress:
 
 resources: {}
 
+monitoring:
+  prometheusProxyURL: ""
+
 plugins:
   enabled: false
   order: []

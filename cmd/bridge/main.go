@@ -148,6 +148,7 @@ func main() {
 	fAlermanagerPublicURL := fs.String("alermanager-public-url", "", "Public URL of the cluster's AlertManager server.")
 	fGrafanaPublicURL := fs.String("grafana-public-url", "", "Public URL of the cluster's Grafana server.")
 	fPrometheusPublicURL := fs.String("prometheus-public-url", "", "Public URL of the cluster's Prometheus server.")
+	fPrometheusProxyURL := fs.String("prometheus-proxy-url", "", "Prometheus-compatible API endpoint used by console's internal /api/prometheus proxy. Intended for Kubernetes clusters without OpenShift monitoring.")
 	fThanosPublicURL := fs.String("thanos-public-url", "", "Public URL of the cluster's Thanos server.")
 
 	enabledPlugins := serverconfig.MultiKeyValue{}
@@ -222,6 +223,9 @@ func main() {
 	flags.FatalIfFailed(err)
 
 	prometheusPublicURL, err := flags.ValidateFlagIsURL("prometheus-public-url", *fPrometheusPublicURL, true)
+	flags.FatalIfFailed(err)
+
+	prometheusProxyURL, err := flags.ValidateFlagIsURL("prometheus-proxy-url", *fPrometheusProxyURL, true)
 	flags.FatalIfFailed(err)
 
 	thanosPublicURL, err := flags.ValidateFlagIsURL("thanos-public-url", *fThanosPublicURL, true)
@@ -588,6 +592,21 @@ func main() {
 		}
 	default:
 		flags.FatalIfFailed(flags.NewInvalidFlagError("k8s-mode", "must be one of: in-cluster, off-cluster"))
+	}
+
+	if prometheusProxyURL.String() != "" {
+		srv.ThanosProxyConfig = &proxy.Config{
+			HeaderBlacklist: srv.ProxyHeaderDenyList,
+			Endpoint:        prometheusProxyURL,
+		}
+		srv.ThanosTenancyProxyConfig = &proxy.Config{
+			HeaderBlacklist: srv.ProxyHeaderDenyList,
+			Endpoint:        prometheusProxyURL,
+		}
+		srv.ThanosTenancyProxyForRulesConfig = &proxy.Config{
+			HeaderBlacklist: srv.ProxyHeaderDenyList,
+			Endpoint:        prometheusProxyURL,
+		}
 	}
 
 	// Set up signal handler for graceful shutdown on first interrupt

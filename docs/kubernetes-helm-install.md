@@ -112,6 +112,21 @@ helm upgrade --install console ./charts/console \
   --set 'plugins.entries[0].endpoint=http://kubevirt-plugin.kubevirt-plugin.svc:9443'
 ```
 
+If you want the VirtualMachine Metrics tab to work on a Kubernetes cluster
+without OpenShift monitoring, point console at a Prometheus-compatible API:
+
+```bash
+helm upgrade --install console ./charts/console \
+  --namespace console \
+  --create-namespace \
+  --set image.repository=ghcr.io/your-org/console-k8s \
+  --set image.tag=latest \
+  --set monitoring.prometheusProxyURL=http://vmsingle-main.monitoring.svc:8429 \
+  --set plugins.enabled=true \
+  --set 'plugins.entries[0].name=kubevirt-plugin' \
+  --set 'plugins.entries[0].endpoint=http://kubevirt-plugin.kubevirt-plugin.svc:9443'
+```
+
 If you need to control plugin resolution order explicitly, set `plugins.order`:
 
 ```bash

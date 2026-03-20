@@ -9,6 +9,10 @@ the kubevirt plugin endpoint with:
   --set plugins.entries[0].name=kubevirt-plugin
   --set plugins.entries[0].endpoint=http://kubevirt-plugin.kubevirt-plugin.svc:9443
 
+If your cluster exposes a Prometheus-compatible API but is not OpenShift,
+wire it to console metrics with:
+  --set monitoring.prometheusProxyURL=http://vmsingle-main.monitoring.svc:8429
+
 The ServiceAccount is bound to the built-in cluster-admin ClusterRole by default
 to keep the initial Kubernetes experience simple. Review this before using it
 outside local development or a trusted admin-controlled cluster.

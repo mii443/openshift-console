@@ -44,9 +44,14 @@ import { useK8sWatchResource } from '@console/internal/components/utils/k8s-watc
 import { LabelList } from '@console/internal/components/utils/label-list';
 import { ResourceLink } from '@console/internal/components/utils/resource-link';
 import { LoadingBox } from '@console/internal/components/utils/status-box';
-import { humanizeBinaryBytes, formatCores } from '@console/internal/components/utils/units';
+import {
+  humanizeBinaryBytes,
+  formatCores,
+  convertToBaseValue,
+} from '@console/internal/components/utils/units';
 import {
   NodeModel,
+  PodModel,
   MachineModel,
   MachineConfigPoolModel,
   MachineSetModel,
@@ -61,8 +66,14 @@ import type {
   MachineConfigPoolKind,
   MachineSetKind,
   ControlPlaneMachineSetKind,
+  PodKind,
 } from '@console/internal/module/k8s';
-import { referenceForModel, referenceFor, LabelSelector } from '@console/internal/module/k8s';
+import {
+  referenceForModel,
+  referenceFor,
+  LabelSelector,
+  k8sBasePath,
+} from '@console/internal/module/k8s';
 import LazyActionMenu from '@console/shared/src/components/actions/LazyActionMenu';
 import { Timestamp } from '@console/shared/src/components/datetime/Timestamp';
 import {
@@ -557,6 +568,62 @@ const fetchNodeMetrics = (): Promise<NodeMetrics> => {
   return Promise.all(promises).then((data: any[]) => _.assign({}, ...data));
 };
 
+type NodeMetric = {
+  metadata?: { name?: string };
+  usage?: { cpu?: string; memory?: string };
+};
+
+type NodeMetricsResponse = {
+  items?: NodeMetric[];
+};
+
+const buildFallbackNodeMetrics = async (
+  nodes: NodeKind[],
+  pods: PodKind[],
+): Promise<NodeMetrics> => {
+  const response = (await coFetchJSON(
+    `${k8sBasePath}/apis/metrics.k8s.io/v1beta1/nodes`,
+  )) as NodeMetricsResponse;
+  const metricsByNodeName = _.keyBy(response.items ?? [], (metric) => metric.metadata?.name);
+  const nodeMetrics: NodeMetrics = {
+    cpu: {},
+    totalCPU: {},
+    pods: {},
+    usedMemory: {},
+    totalMemory: {},
+    usedStorage: {},
+    totalStorage: {},
+    runningVms: {},
+  };
+
+  nodes.forEach((node) => {
+    const nodeName = getName(node);
+    const allocatable = node.status?.allocatable ?? {};
+    const metric = metricsByNodeName[nodeName];
+
+    nodeMetrics.totalCPU[nodeName] = convertToBaseValue(allocatable.cpu) ?? 0;
+    nodeMetrics.totalMemory[nodeName] = convertToBaseValue(allocatable.memory) ?? 0;
+    nodeMetrics.cpu[nodeName] = convertToBaseValue(metric?.usage?.cpu) ?? 0;
+    nodeMetrics.usedMemory[nodeName] = convertToBaseValue(metric?.usage?.memory) ?? 0;
+    nodeMetrics.pods[nodeName] = 0;
+  });
+
+  pods.forEach((pod) => {
+    const nodeName = pod.spec?.nodeName;
+    const phase = pod.status?.phase;
+    if (
+      nodeName &&
+      nodeMetrics.pods[nodeName] !== undefined &&
+      !pod.metadata?.deletionTimestamp &&
+      !['Succeeded', 'Failed'].includes(phase)
+    ) {
+      nodeMetrics.pods[nodeName] += 1;
+    }
+  });
+
+  return nodeMetrics;
+};
+
 const showMetrics = PROMETHEUS_BASE_PATH && window.innerWidth > 1200;
 
 type NodeListProps = {
@@ -873,6 +940,10 @@ export const NodesPage: FC<NodesPageProps> = ({ selector }) => {
     isList: true,
     selector,
   });
+  const [pods, podsLoaded] = useK8sWatchResource<PodKind[]>({
+    groupVersionKind: getGroupVersionKindForResource(PodModel),
+    isList: true,
+  });
 
   const [machines, machinesLoaded] = useWatchResourcesIfAllowed<MachineKind[]>(MachineModel);
 
@@ -921,8 +992,16 @@ export const NodesPage: FC<NodesPageProps> = ({ selector }) => {
         const metrics = await fetchNodeMetrics();
         dispatch(setNodeMetrics(metrics));
       } catch (e) {
-        // eslint-disable-next-line no-console
-        console.error('Error fetching node metrics: ', e);
+        if (!nodesLoaded || !podsLoaded) {
+          return;
+        }
+        try {
+          const metrics = await buildFallbackNodeMetrics(nodes, pods);
+          dispatch(setNodeMetrics(metrics));
+        } catch (fallbackError) {
+          // eslint-disable-next-line no-console
+          console.error('Error fetching node metrics: ', e, fallbackError);
+        }
       }
     };
     updateMetrics();
@@ -931,7 +1010,7 @@ export const NodesPage: FC<NodesPageProps> = ({ selector }) => {
       return () => clearInterval(id);
     }
     return () => {};
-  }, [dispatch]);
+  }, [dispatch, nodes, nodesLoaded, pods, podsLoaded]);
 
   const data = useMemo(() => {
     const csrBundle = getNodeClientCSRs(csrs).filter(
